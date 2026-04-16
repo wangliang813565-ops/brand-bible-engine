@@ -1,12 +1,12 @@
 name = "brand-bible-engine"
 compatibility_date = "2026-04-15"
+compatibility_flags = ["nodejs_compat"]
 pages_build_output_dir = ".svelte-kit/cloudflare"
 
 [vars]
-# Non-secret environment vars go here
-# GEMINI_API_KEY set via `wrangler secret put GEMINI_API_KEY` or dashboard
+# GEMINI_API_KEY is set via wrangler pages secret put
 
 [[d1_databases]]
 binding = "DB"
 database_name = "brand-bible-engine"
-database_id = "PLACEHOLDER_REPLACE_AFTER_CREATE"
+database_id = "60e04bea-56f0-4b05-b9e8-36a657f965d8"
