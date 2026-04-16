@@ -9,6 +9,7 @@ import { generateQuestions } from '$lib/question-generator';
 import { evaluateCompletion } from '$lib/completion-evaluator';
 import { composeBible } from '$lib/bible-composer';
 import { RESEARCH_GOALS, type GoalId } from '$lib/research-goals';
+import { readCreds, getTenantAccessToken, createBitableRecord } from '$lib/feishu';
 
 export const POST: RequestHandler = async ({ request, platform }) => {
 	if (!platform?.env?.DB) throw error(500, 'D1 not bound');
@@ -95,16 +96,76 @@ export const POST: RequestHandler = async ({ request, platform }) => {
 				all_answers: answeredHistory,
 				goal_coverage: coverage
 			});
+
+			// 同步到飞书 Bitable（异步，不阻塞响应）
+			let feishuRecordId: string | null = null;
+			const feishuCreds = readCreds(platform.env as any);
+			if (feishuCreds) {
+				try {
+					const { token } = await getTenantAccessToken(feishuCreds);
+
+					// 收集所有附件的 file_token
+					const allAttachments: { file_token: string }[] = [];
+					for (const a of allAnswers) {
+						if (a.attachments) {
+							try {
+								const list = JSON.parse(a.attachments) as any[];
+								for (const att of list) {
+									if (att.file_token) allAttachments.push({ file_token: att.file_token });
+								}
+							} catch {}
+						}
+					}
+
+					// 整理硬档案（profile 板块的答案）
+					const profileAnswers = answeredHistory
+						.filter((a) => a.goal === 'profile')
+						.map((a) => `${a.question}\n  → ${a.custom_text || a.selected}`)
+						.join('\n\n');
+
+					// 整理完整问答记录
+					const fullQA = answeredHistory
+						.map(
+							(a, i) =>
+								`[${a.goal}] Q${i + 1}: ${a.question}\n  → ${a.custom_text || a.selected}`
+						)
+						.join('\n\n');
+
+					const result = await createBitableRecord(
+						token,
+						feishuCreds.bitable_app_token,
+						feishuCreds.bitable_table_id,
+						{
+							session_id: sessionId,
+							品牌名: session.brand_name || '（未命名）',
+							答题总数: answeredHistory.length,
+							完成时间: Date.now(),
+							附件: allAttachments,
+							硬档案: profileAnswers || '（无 profile 答案）',
+							完整问答记录: fullQA.slice(0, 50000), // 飞书文本字段上限保守估计
+							品牌圣经Markdown: bible.slice(0, 50000)
+						}
+					);
+					feishuRecordId = result.record_id;
+				} catch (e: any) {
+					console.error('[feishu sync] failed:', e.message);
+					// 失败不阻塞，D1 里的数据仍然完整
+				}
+			}
+
 			await updateSession(platform.env.DB, sessionId, {
 				status: 'completed',
 				bible_markdown: bible,
 				goal_coverage: JSON.stringify(coverage),
-				completed_at: Date.now()
+				completed_at: Date.now(),
+				...(feishuRecordId ? { feishu_record_id: feishuRecordId, feishu_synced_at: Date.now() } : {})
 			});
+
 			return json({
 				done: true,
 				bible_markdown: bible,
-				goal_coverage: coverage
+				goal_coverage: coverage,
+				feishu_record_id: feishuRecordId
 			});
 		}
 

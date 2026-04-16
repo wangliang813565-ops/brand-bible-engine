@@ -24,7 +24,11 @@ CREATE TABLE IF NOT EXISTS sessions (
     -- 时间戳
     created_at INTEGER NOT NULL,
     updated_at INTEGER NOT NULL,
-    completed_at INTEGER
+    completed_at INTEGER,
+
+    -- 飞书 Bitable 归档（可选）
+    feishu_record_id TEXT,                  -- 完成时在飞书创建的记录 ID
+    feishu_synced_at INTEGER
 );
 
 CREATE INDEX IF NOT EXISTS idx_sessions_status ON sessions(status);
@@ -52,6 +56,7 @@ CREATE TABLE IF NOT EXISTS answers (
     selected_option TEXT,                   -- 选中的选项文本
     selected_index INTEGER,                 -- 选中的 index (0-based)
     custom_text TEXT,                       -- 用户选"其他（自填）"时的内容
+    attachments TEXT,                       -- JSON: [{file_token, name, size}]，飞书 Bitable 附件
 
     -- 时间
     shown_at INTEGER NOT NULL,

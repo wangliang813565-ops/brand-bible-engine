@@ -16,6 +16,8 @@ export interface Session {
 	created_at: number;
 	updated_at: number;
 	completed_at: number | null;
+	feishu_record_id?: string | null;
+	feishu_synced_at?: number | null;
 }
 
 export interface AnswerRow {
@@ -32,6 +34,7 @@ export interface AnswerRow {
 	selected_option: string | null;
 	selected_index: number | null;
 	custom_text: string | null;
+	attachments: string | null; // JSON
 	shown_at: number;
 	answered_at: number | null;
 }
@@ -168,13 +171,14 @@ export async function recordAnswer(
 	answerId: number,
 	selectedIndex: number,
 	selectedOption: string,
-	customText: string | null = null
+	customText: string | null = null,
+	attachments: string | null = null
 ): Promise<void> {
 	await db
 		.prepare(
-			`UPDATE answers SET selected_index = ?, selected_option = ?, custom_text = ?, answered_at = ? WHERE id = ?`
+			`UPDATE answers SET selected_index = ?, selected_option = ?, custom_text = ?, attachments = ?, answered_at = ? WHERE id = ?`
 		)
-		.bind(selectedIndex, selectedOption, customText, Date.now(), answerId)
+		.bind(selectedIndex, selectedOption, customText, attachments, Date.now(), answerId)
 		.run();
 }
 

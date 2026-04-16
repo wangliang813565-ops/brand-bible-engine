@@ -28,10 +28,19 @@
 		bible_markdown?: string;
 	}
 
+	interface Attachment {
+		file_token: string;
+		name: string;
+		size: number;
+		mime?: string;
+	}
+
 	let currentRound = $state<RoundData | null>(null);
 	let currentQuestionIdx = $state(0); // 0-3
 	let customInput = $state(''); // "其他" 输入框 或 text/url/email/tel 输入
 	let multiSelected = $state<number[]>([]); // 多选题选中的 index 列表
+	let attachments = $state<Attachment[]>([]); // 当前题的附件
+	let uploading = $state(false);
 	let loading = $state(true);
 	let submitting = $state(false);
 	let errorMsg = $state('');
@@ -83,7 +92,8 @@
 					answer_id: q.id,
 					selected_index: optionIndex,
 					selected_option: optionText,
-					custom_text: customText
+					custom_text: customText,
+					attachments: attachments.length > 0 ? attachments : null
 				})
 			});
 			if (!resp.ok) {
@@ -95,6 +105,7 @@
 			q.custom_text = customText;
 			customInput = '';
 			multiSelected = [];
+			attachments = [];
 
 			if (currentQuestionIdx < (currentRound.questions?.length || 0) - 1) {
 				currentQuestionIdx++;
@@ -106,6 +117,47 @@
 		} finally {
 			submitting = false;
 		}
+	}
+
+	async function handleFilePick(event: Event) {
+		const input = event.target as HTMLInputElement;
+		const files = input.files;
+		if (!files || files.length === 0) return;
+
+		uploading = true;
+		errorMsg = '';
+		try {
+			for (const file of Array.from(files)) {
+				const form = new FormData();
+				form.append('file', file);
+				const resp = await fetch('/api/upload', { method: 'POST', body: form });
+				const data = (await resp.json()) as any;
+				if (!resp.ok || !data.ok) {
+					throw new Error(data.error || data.message || '上传失败');
+				}
+				attachments = [...attachments, {
+					file_token: data.file_token,
+					name: data.name,
+					size: data.size,
+					mime: data.mime
+				}];
+			}
+			input.value = '';
+		} catch (e: any) {
+			errorMsg = e.message || '上传失败';
+		} finally {
+			uploading = false;
+		}
+	}
+
+	function removeAttachment(idx: number) {
+		attachments = attachments.filter((_, i) => i !== idx);
+	}
+
+	function formatSize(bytes: number): string {
+		if (bytes < 1024) return `${bytes} B`;
+		if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+		return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
 	}
 
 	function handleOptionClick(index: number, option: string) {
@@ -221,6 +273,34 @@
 				<strong>💡 为什么问这题：</strong>{q.rationale}
 			</div>
 		{/if}
+
+		<!-- 附件上传区：所有题型都支持 -->
+		<div class="attach-row">
+			<label class="attach-btn" class:uploading={uploading}>
+				📎 {uploading ? '上传中...' : '上传附件（图片/PDF/Office 文件）'}
+				<input
+					type="file"
+					multiple
+					accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.csv,.txt"
+					onchange={handleFilePick}
+					disabled={uploading || submitting}
+				/>
+			</label>
+			{#if attachments.length > 0}
+				<div class="attach-list">
+					{#each attachments as att, i}
+						<div class="attach-item">
+							<span class="attach-icon">{att.mime?.startsWith('image/') ? '🖼️' : '📄'}</span>
+							<span class="attach-name">{att.name}</span>
+							<span class="attach-size">{formatSize(att.size)}</span>
+							<button class="attach-remove" onclick={() => removeAttachment(i)} disabled={submitting}
+								>✕</button
+							>
+						</div>
+					{/each}
+				</div>
+			{/if}
+		</div>
 
 		{#if q.input_type === 'text' || q.input_type === 'url' || q.input_type === 'email' || q.input_type === 'tel'}
 			<!-- 文本输入题 -->
@@ -524,6 +604,78 @@
 	.primary-sm:disabled {
 		opacity: 0.5;
 		cursor: not-allowed;
+	}
+	.attach-row {
+		margin-bottom: 20px;
+		padding: 14px;
+		background: #f8f9fa;
+		border: 1px dashed #d0d0d0;
+		border-radius: 10px;
+	}
+	.attach-btn {
+		display: inline-flex;
+		align-items: center;
+		gap: 6px;
+		padding: 8px 14px;
+		background: #fff;
+		border: 1px solid #ddd;
+		border-radius: 6px;
+		font-size: 13px;
+		color: #555;
+		cursor: pointer;
+		transition: all 0.15s;
+	}
+	.attach-btn:hover {
+		border-color: #1a1a1a;
+		color: #1a1a1a;
+	}
+	.attach-btn.uploading {
+		pointer-events: none;
+		opacity: 0.6;
+	}
+	.attach-btn input[type='file'] {
+		display: none;
+	}
+	.attach-list {
+		margin-top: 12px;
+		display: flex;
+		flex-direction: column;
+		gap: 6px;
+	}
+	.attach-item {
+		display: flex;
+		align-items: center;
+		gap: 8px;
+		padding: 6px 10px;
+		background: #fff;
+		border: 1px solid #e8e8e8;
+		border-radius: 6px;
+		font-size: 13px;
+	}
+	.attach-icon {
+		font-size: 16px;
+	}
+	.attach-name {
+		flex: 1;
+		white-space: nowrap;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		color: #333;
+	}
+	.attach-size {
+		color: #888;
+		font-size: 12px;
+	}
+	.attach-remove {
+		background: none;
+		border: none;
+		color: #888;
+		cursor: pointer;
+		font-size: 14px;
+		padding: 0 4px;
+	}
+	.attach-remove:hover {
+		color: #d00;
 	}
 	.nav {
 		display: flex;

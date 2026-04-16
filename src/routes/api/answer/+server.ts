@@ -9,7 +9,7 @@ export const POST: RequestHandler = async ({ request, platform }) => {
 	if (!platform?.env?.DB) throw error(500, 'D1 not bound');
 
 	const body = (await request.json()) as any;
-	const { answer_id, selected_index, selected_option, custom_text } = body;
+	const { answer_id, selected_index, selected_option, custom_text, attachments } = body;
 
 	if (!answer_id || selected_index === undefined || !selected_option) {
 		throw error(400, 'missing fields');
@@ -20,7 +20,8 @@ export const POST: RequestHandler = async ({ request, platform }) => {
 		answer_id,
 		selected_index,
 		selected_option,
-		custom_text || null
+		custom_text || null,
+		attachments ? JSON.stringify(attachments) : null
 	);
 
 	return json({ ok: true });
