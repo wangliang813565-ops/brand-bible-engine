@@ -11,6 +11,10 @@ import { composeBible } from '$lib/bible-composer';
 import { RESEARCH_GOALS, type GoalId } from '$lib/research-goals';
 import { readCreds, getTenantAccessToken, createBitableRecord } from '$lib/feishu';
 import { generateRecap } from '$lib/recap-generator';
+import {
+	getProfileQuestionsForRound,
+	PROFILE_TOTAL_ROUNDS
+} from '$lib/profile-form';
 
 export const POST: RequestHandler = async ({ request, platform }) => {
 	if (!platform?.env?.DB) throw error(500, 'D1 not bound');
@@ -203,13 +207,33 @@ export const POST: RequestHandler = async ({ request, platform }) => {
 	}
 
 	// ====== 生成 4 题 ======
-	const questions = await generateQuestions(
-		platform.env.GEMINI_API_KEY,
-		nextGoal,
-		nextRoundIndex - 1, // 传入已经问过的轮数
-		answeredHistory,
-		mode
-	);
+	let questions: {
+		question: string;
+		input_type: string;
+		options: string[];
+		placeholder?: string;
+		rationale: string;
+	}[];
+
+	if (nextGoal === 'profile') {
+		// Profile 板块：不调 LLM，用固定题目
+		const staticQs = getProfileQuestionsForRound(nextRoundIndex);
+		questions = staticQs.map((q) => ({
+			question: q.question,
+			input_type: q.input_type,
+			options: q.options || [],
+			placeholder: q.placeholder,
+			rationale: q.rationale
+		}));
+	} else {
+		questions = await generateQuestions(
+			platform.env.GEMINI_API_KEY,
+			nextGoal,
+			nextRoundIndex - 1,
+			answeredHistory,
+			mode
+		);
+	}
 
 	// 存入数据库
 	await insertQuestions(platform.env.DB, sessionId, nextGoal, nextRoundIndex, questions);

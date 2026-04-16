@@ -167,13 +167,16 @@ export const RESEARCH_GOALS: Record<GoalId, Goal> = {
 	}
 };
 
+// 先谈品牌故事（有趣的主观内容）→ 再摸排文书 → 最后再填硬档案
+// 硬档案放最后的原因：用户投入 15 分钟答完前面后，更愿意花 2 分钟补客观信息；
+// 而且档案板块可以整体跳过（对已有档案文件的用户），减少启动摩擦
 export const GOAL_ORDER: GoalId[] = [
-	'profile', // 先填硬档案
 	'identity',
 	'product',
 	'acquisition',
 	'production',
-	'documents' // 最后摸排文书
+	'documents',
+	'profile' // 硬档案 - 可选，最后填
 ];
 
 // 收敛策略参数（不同目标有不同节奏）
@@ -186,12 +189,12 @@ export const MAX_ROUNDS_PER_GOAL = 20;
 
 // 按目标独立配置
 export const GOAL_ROUND_CONFIG: Record<GoalId, { min: number; max: number }> = {
-	profile: { min: 3, max: 5 }, // 硬档案：填表性质，3-5 轮足够
+	profile: { min: 3, max: 3 }, // 硬档案：固定 10 题 / 3 轮（4+4+2），不由 AI 动态生成
 	identity: { min: 10, max: 20 },
 	product: { min: 10, max: 20 },
 	acquisition: { min: 10, max: 20 },
 	production: { min: 10, max: 20 },
-	documents: { min: 3, max: 6 } // 文书摸排：3-6 轮确定用什么文书
+	documents: { min: 3, max: 6 }
 };
 
 // 题型（前端据此渲染）

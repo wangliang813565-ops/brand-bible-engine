@@ -51,6 +51,10 @@
 	let showingRecap = $state(false);       // 当前是否在展示 recap
 	let recapText = $state('');             // 点评文本
 
+	// 档案板块的"进入前介绍页"
+	let showProfileIntro = $state(false);
+	let skippingProfile = $state(false);
+
 	// 加载或请求下一轮
 	async function loadNextRound(showTransition = false) {
 		if (showTransition) {
@@ -82,6 +86,15 @@
 				await new Promise((r) => setTimeout(r, 180));
 			}
 
+			// 如果切入了 profile 板块、且是第 1 轮 → 先显示介绍页
+			if (data.goal === 'profile' && data.round_index === 1 && !data.done) {
+				showProfileIntro = true;
+				// 暂不渲染题目，等用户点"开始填"或"跳过"
+				currentRound = data;
+				currentQuestionIdx = findFirstUnanswered(data.questions || []);
+				return;
+			}
+
 			currentRound = data;
 			currentQuestionIdx = findFirstUnanswered(data.questions || []);
 		} catch (e: any) {
@@ -89,6 +102,31 @@
 		} finally {
 			loading = false;
 			transitioning = false;
+		}
+	}
+
+	function dismissProfileIntro() {
+		showProfileIntro = false;
+	}
+
+	async function skipProfileEntirely() {
+		if (!confirm('确定跳过档案板块吗？你将直接生成品牌圣经，但不会包含 Logo/税号/执照等资料。')) return;
+		skippingProfile = true;
+		errorMsg = '';
+		try {
+			const resp = await fetch('/api/skip-profile', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ session_id: sessionId })
+			});
+			const data = (await resp.json()) as RoundData;
+			if (!resp.ok) throw new Error((data as any).error || '跳过失败');
+			showProfileIntro = false;
+			currentRound = data;
+		} catch (e: any) {
+			errorMsg = e.message || '网络错误';
+		} finally {
+			skippingProfile = false;
 		}
 	}
 
@@ -279,6 +317,54 @@
 			</div>
 		{/if}
 	</div>
+{:else if showProfileIntro}
+	<!-- 档案板块进入前介绍页 -->
+	<div class="profile-intro fade-in">
+		<div class="intro-header">
+			<span class="intro-emoji">📋</span>
+			<h1>最后一步：存档你的硬资料</h1>
+			<p class="intro-sub">
+				Logo、税号、营业执照、联系方式…… 这些客观信息，一次录入、终身复用。
+			</p>
+		</div>
+
+		<div class="intro-benefits">
+			<div class="benefit">
+				<span class="check">✓</span>
+				<div>
+					<strong>自动填各种对外文档</strong>
+					<p>以后生成报价单 / 发票 / 合同 / 装箱单时，AI 直接拿这些资料自动填，不用重输。</p>
+				</div>
+			</div>
+			<div class="benefit">
+				<span class="check">✓</span>
+				<div>
+					<strong>规范入档到飞书多维表格</strong>
+					<p>所有资料包括附件（Logo、执照）都同步到你的飞书 Base，终身保存。</p>
+				</div>
+			</div>
+			<div class="benefit">
+				<span class="check">✓</span>
+				<div>
+					<strong>10 道题 · 约 2 分钟</strong>
+					<p>每一题都可以点"暂无 / 稍后补充"跳过。不强制。</p>
+				</div>
+			</div>
+		</div>
+
+		<div class="intro-actions">
+			<button class="primary" onclick={dismissProfileIntro} disabled={skippingProfile}>
+				好，开始填（2 分钟）→
+			</button>
+			<button class="link-btn" onclick={skipProfileEntirely} disabled={skippingProfile}>
+				{skippingProfile ? '生成圣经中…' : '跳过整个档案，直接生成圣经'}
+			</button>
+		</div>
+
+		{#if errorMsg}
+			<div class="error">{errorMsg}</div>
+		{/if}
+	</div>
 {:else if currentRound?.done}
 	<!-- 品牌圣经完成页 -->
 	<div class="bible-page">
@@ -312,7 +398,7 @@
 
 	<div class="progress-bar">
 		<div class="goals">
-			{#each [{ id: 'profile', name: '档案' }, { id: 'identity', name: '身份' }, { id: 'product', name: '产品' }, { id: 'acquisition', name: '获客' }, { id: 'production', name: '创作' }, { id: 'documents', name: '文书' }] as g}
+			{#each [{ id: 'identity', name: '身份' }, { id: 'product', name: '产品' }, { id: 'acquisition', name: '获客' }, { id: 'production', name: '创作' }, { id: 'documents', name: '文书' }, { id: 'profile', name: '档案' }] as g}
 				<div class="goal-chip" class:active={currentRound.goal === g.id}>
 					<span class="goal-name">{g.name}</span>
 					<span class="goal-pct">{coverage[g.id] || 0}%</span>
@@ -587,6 +673,109 @@
 	}
 	.fade-in {
 		animation: fadeInUp 0.45s cubic-bezier(0.2, 0.8, 0.2, 1);
+	}
+	.profile-intro {
+		max-width: 640px;
+		margin: 0 auto;
+		padding: 24px 16px;
+	}
+	.intro-header {
+		text-align: center;
+		margin-bottom: 32px;
+	}
+	.intro-emoji {
+		font-size: 48px;
+		display: block;
+		margin-bottom: 12px;
+	}
+	.intro-header h1 {
+		margin: 0 0 10px;
+		font-size: 24px;
+		font-weight: 700;
+	}
+	.intro-sub {
+		margin: 0;
+		color: #666;
+		font-size: 15px;
+		line-height: 1.6;
+	}
+	.intro-benefits {
+		background: #fff;
+		border-radius: 16px;
+		padding: 24px;
+		box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
+		margin-bottom: 24px;
+	}
+	.benefit {
+		display: flex;
+		gap: 12px;
+		padding: 14px 0;
+		border-bottom: 1px solid #f0f0f0;
+	}
+	.benefit:last-child {
+		border-bottom: none;
+	}
+	.benefit .check {
+		flex-shrink: 0;
+		width: 24px;
+		height: 24px;
+		background: #0a7d3e;
+		color: #fff;
+		border-radius: 50%;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		font-size: 14px;
+		font-weight: 700;
+	}
+	.benefit strong {
+		display: block;
+		font-size: 15px;
+		color: #1a1a1a;
+		margin-bottom: 4px;
+	}
+	.benefit p {
+		margin: 0;
+		color: #666;
+		font-size: 13px;
+		line-height: 1.6;
+	}
+	.intro-actions {
+		display: flex;
+		flex-direction: column;
+		gap: 12px;
+		align-items: center;
+	}
+	.intro-actions .primary {
+		width: 100%;
+		max-width: 420px;
+		padding: 14px;
+		font-size: 16px;
+		font-weight: 600;
+		background: #1a1a1a;
+		color: #fff;
+		border: none;
+		border-radius: 10px;
+		cursor: pointer;
+	}
+	.intro-actions .primary:hover:not(:disabled) {
+		opacity: 0.88;
+	}
+	.intro-actions .primary:disabled {
+		opacity: 0.5;
+		cursor: not-allowed;
+	}
+	.link-btn {
+		background: none;
+		border: none;
+		color: #888;
+		font-size: 14px;
+		cursor: pointer;
+		padding: 8px 16px;
+		text-decoration: underline;
+	}
+	.link-btn:hover {
+		color: #333;
 	}
 	@keyframes fadeInUp {
 		from {
