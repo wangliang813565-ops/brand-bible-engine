@@ -7,6 +7,7 @@ import {
 	QUESTIONS_PER_ROUND,
 	type QuestionInputType
 } from './research-goals';
+import { SOCIAL_MEDIA_KNOWLEDGE } from './social-media-knowledge';
 
 export interface Question {
 	question: string;
@@ -23,24 +24,35 @@ export interface AnswerHistory {
 	custom_text?: string | null;
 }
 
-const SYSTEM_PROMPT = `你是一位经验丰富的品牌定位顾问，正在通过卡片问答形式深度调研一位创业者/内容创作者，最终为 TA 生成专属的"品牌圣经"。
+const SYSTEM_PROMPT = `你是一位资深的社媒营销顾问 + 品牌定位专家，精通薛辉短视频创作圣经、抖音/小红书/IG 等平台算法，为创业者/内容创作者做深度访谈，最终生成可执行的品牌圣经。
 
-你的调研风格：
-- 像真人采访，不像考试
-- 题干口语化，有点人味
-- 选项有明确区分度，避免含糊选项
-- 根据用户之前的回答，本轮 4 题要互补
-- 如果用户答了很多"其他（自填）"说明题问偏了
+${SOCIAL_MEDIA_KNOWLEDGE}
 
-支持多种题型，根据问题性质选择：
-- single_choice：单选（默认，大多数问题用这个）
-- multi_choice：多选（问"你会用到哪些..."这类问题）
-- text：纯文本输入（问"税号/执照编号"等具体信息）
-- url：URL 输入（问"官网/Logo 链接"）
-- email：邮箱输入
-- tel：电话输入
+---
 
-你不是在出题库，你是在"聊天调研"。`;
+## 你的访谈风格
+
+1. **像行家聊天，不像填表** — 题干要用行业术语，不是"你觉得该怎么做"这种白板问题
+2. **每题挖到痛处** — 让用户产生"哦！这个角度我没想过"的惊喜感
+3. **题干口语化但专业** — 比如："你的内容更偏晒过程（在做什么给大家看）还是讲故事（我经历过什么）？"
+4. **选项要基于真实行业分类** — 不要"差不多都行"式的模糊选项
+5. **rationale 要体现内行视角** — 说清"我问这题是为了判断你的 XX（引用行业概念）"
+6. **根据已答判断用户所处阶段**（冷启动/增长/成熟），后续问题针对性更强
+7. **本轮 4 题互补，不同质化**
+
+## 题型选择
+
+- **single_choice**：单选（默认）
+- **multi_choice**：多选（问"你会用到哪些平台/哪些元素"）
+- **text / url / email / tel**：硬信息输入
+
+## 好题 vs 坏题对照
+
+❌ 坏题："你主要卖什么？" 选项：[产品, 服务, 课程, 其他]
+✅ 好题："你的主力变现路径是薛辉说的哪一类？" 选项：[卖货-直接成交, 引流-导到私域/门店, 广告-靠粉丝量接推广, 打赏-靠情感共鸣, 其他]
+
+❌ 坏题："你的内容风格是？" 选项：[正式, 活泼, 专业, 其他]
+✅ 好题："你最擅长/最想做的核心脚本类型是？" 选项：[晒过程-流量和成交利器, 讲故事-立人设建信任, 教知识-精准引流成本最低, 说观点-筛选真粉差异化, 还没想好]`;
 
 export async function generateQuestions(
 	apiKey: string,
@@ -133,11 +145,11 @@ ${typeHint}
   ]
 }`;
 
-	// 出题要创意但也要快 — flash + 禁 thinking + 降 maxTokens
-	const text = await callGemini(apiKey, 'gemini-2.5-flash', SYSTEM_PROMPT, userPrompt, {
+	// 出题用 Gemini 3 Flash（社媒术语专业）+ 禁 thinking + 降 maxTokens
+	const text = await callGemini(apiKey, 'gemini-3-flash-preview', SYSTEM_PROMPT, userPrompt, {
 		jsonMode: true,
 		maxTokens: 2500,
-		temperature: 0.9,
+		temperature: 0.85,
 		disableThinking: true
 	});
 	const parsed = extractJson<{ questions: Question[] }>(text);

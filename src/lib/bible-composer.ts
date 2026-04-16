@@ -3,10 +3,15 @@
 import { callGemini } from './llm';
 import { RESEARCH_GOALS, type GoalId } from './research-goals';
 import type { AnswerHistory } from './question-generator';
+import { SOCIAL_MEDIA_KNOWLEDGE } from './social-media-knowledge';
 
-const SYSTEM_PROMPT = `你是一位资深的品牌战略顾问。你刚完成了对一位创业者/内容创作者的 200+ 题深度调研。
+const SYSTEM_PROMPT = `你是资深的社媒营销顾问 + 品牌战略顾问，精通薛辉短视频创作圣经。你刚完成了对一位创业者/内容创作者的 200+ 题深度调研。
 
-现在你要把所有调研内容整理成一份高质量的品牌圣经 Markdown 文档。
+${SOCIAL_MEDIA_KNOWLEDGE}
+
+---
+
+现在你要把所有调研内容整理成一份高质量的品牌圣经 Markdown 文档。文档要体现你的行业功底 — 用薛辉方法论的术语和框架组织，而不是白话堆砌。
 
 这份文档的标准：
 - 结构清晰，像 Stripe Atlas 或 MUSE 重装项目简报那样
@@ -240,12 +245,12 @@ ${formatGoalSection('documents')}
 
 开始生成：`;
 
-	// 最终生成可以慢一点（只跑一次）— 用 2.5 Pro 出更有深度的文档
-	// 但仍禁用 extended thinking 避免超时 (Cloudflare Pages Functions 30s 限制)
-	const bible = await callGemini(apiKey, 'gemini-2.5-pro', SYSTEM_PROMPT, userPrompt, {
+	// 品牌圣经用 Gemini 3 Pro — 最强的行业深度
+	// 禁用 extended thinking 避免超时 (Cloudflare Pages Functions 30s 限制)
+	const bible = await callGemini(apiKey, 'gemini-3-pro-preview', SYSTEM_PROMPT, userPrompt, {
 		jsonMode: false,
 		maxTokens: 16000,
-		temperature: 0.8,
+		temperature: 0.75,
 		disableThinking: true
 	});
 	return bible.trim();

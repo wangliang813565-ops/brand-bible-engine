@@ -4,9 +4,12 @@
 const GEMINI_API_BASE = 'https://generativelanguage.googleapis.com/v1beta';
 
 export type GeminiModel =
-	| 'gemini-2.5-flash-lite' // 最快，用于简单分类/点评
-	| 'gemini-2.5-flash' // 快，用于出题（需要创意）
-	| 'gemini-2.5-pro'; // 慢，用于最终生成品牌圣经
+	| 'gemini-3-flash-preview' // Gemini 3 Flash — 速度快 + 社媒行业术语专业，首选
+	| 'gemini-3.1-flash-lite-preview' // 3.1 Flash Lite — 最快，简单分类/点评
+	| 'gemini-3-pro-preview' // Gemini 3 Pro — 慢但深度，用于最终生成品牌圣经
+	| 'gemini-2.5-flash-lite' // 保留兼容
+	| 'gemini-2.5-flash'
+	| 'gemini-2.5-pro';
 
 export interface CallOptions {
 	jsonMode?: boolean;
@@ -25,10 +28,12 @@ export async function callGemini(
 ): Promise<string> {
 	const url = `${GEMINI_API_BASE}/models/${model}:generateContent?key=${apiKey}`;
 
+	const isProModel = model.includes('pro');
+	const isLiteModel = model.includes('lite');
 	const generationConfig: any = {
 		temperature: opts.temperature ?? 0.9,
 		maxOutputTokens:
-			opts.maxTokens ?? (model === 'gemini-2.5-pro' ? 16000 : model === 'gemini-2.5-flash' ? 3000 : 1500)
+			opts.maxTokens ?? (isProModel ? 16000 : isLiteModel ? 1500 : 3000)
 	};
 
 	if (opts.jsonMode ?? true) {

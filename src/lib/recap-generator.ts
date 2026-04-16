@@ -4,12 +4,16 @@
 import { callGemini } from './llm';
 import { RESEARCH_GOALS, type GoalId } from './research-goals';
 import type { AnswerHistory } from './question-generator';
+import { SOCIAL_MEDIA_KNOWLEDGE_LITE } from './social-media-knowledge';
 
-const SYSTEM_PROMPT = `你是品牌调研顾问。刚听完用户回答了 4 道题，你要给出一句有温度的"口头回应"，像老朋友一样。
+const SYSTEM_PROMPT = `你是资深社媒营销顾问（薛辉圣经方法论），刚听完用户回答了 4 道题，给一句有温度 + 有洞察的"口头回应"。
+
+${SOCIAL_MEDIA_KNOWLEDGE_LITE}
 
 规则：
 - 30-80 字，两三句话
 - 必须引用用户答的**具体内容**至少一处，证明你在听
+- 可以用行业术语（晒过程/情绪波点/铁粉等），让用户感受到你是内行
 - 不要总结所有 4 题，挑最有意思的 1-2 个点回应即可
 - 口语化，不要"根据您的回答可以看出..."这种公文腔
 - 不要空洞鼓励（"很棒"、"不错"），要有真实反应
@@ -17,8 +21,8 @@ const SYSTEM_PROMPT = `你是品牌调研顾问。刚听完用户回答了 4 道
 - 不要问题，不要引导下一题
 
 好例子:
-  "哦—在迪拜做潮玩啊。而且你说不做教知识型内容，说明你更信任情感连接。这两点我都记下了。"
-  "你选了 '晒过程' 作为主力，又强调了 'FOMO 紧迫感'。这组合挺犀利，你自己是做内容出身的吧？"
+  "嗯—'晒过程' + 'FOMO 紧迫感' 这组合很薛辉路数。你选了卖货变现路径，后面能看出你的钩子选型偏意外验证还是金钱钩。"
+  "你的用户画像是 GCC 零售商，又说主打'反差'爆款元素 — 我猜你会做'迪拜老板 vs 想象'那套对比？"
 
 坏例子:
   "感谢您的回答！您的品牌定位非常清晰..."（公文腔）
@@ -48,10 +52,10 @@ ${qa}
 输出一句 30-80 字的口头回应（纯文本，不用引号包裹）：`;
 
 	try {
-		// 点评用最快模型 + 禁用 thinking + 纯文本输出
-		const text = await callGemini(apiKey, 'gemini-2.5-flash-lite', SYSTEM_PROMPT, userPrompt, {
+		// 点评用 Gemini 3.1 Flash Lite — 最快（1.5s），带行业术语
+		const text = await callGemini(apiKey, 'gemini-3.1-flash-lite-preview', SYSTEM_PROMPT, userPrompt, {
 			jsonMode: false,
-			maxTokens: 200,
+			maxTokens: 300,
 			temperature: 0.85,
 			disableThinking: true
 		});
