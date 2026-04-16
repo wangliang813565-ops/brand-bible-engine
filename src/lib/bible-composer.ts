@@ -240,6 +240,13 @@ ${formatGoalSection('documents')}
 
 开始生成：`;
 
-	const bible = await callGemini(apiKey, 'gemini-2.5-pro', SYSTEM_PROMPT, userPrompt, false);
+	// 最终生成可以慢一点（只跑一次）— 用 2.5 Pro 出更有深度的文档
+	// 但仍禁用 extended thinking 避免超时 (Cloudflare Pages Functions 30s 限制)
+	const bible = await callGemini(apiKey, 'gemini-2.5-pro', SYSTEM_PROMPT, userPrompt, {
+		jsonMode: false,
+		maxTokens: 16000,
+		temperature: 0.8,
+		disableThinking: true
+	});
 	return bible.trim();
 }

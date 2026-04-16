@@ -76,14 +76,15 @@
 				localStorage.setItem('bbe_session_id', sessionId);
 			}
 
-			// 如果有上一轮的点评 + 处于过场模式 → 展示点评 2.5 秒
+			// 如果有上一轮的点评 + 处于过场模式 → 展示点评
 			if (showTransition && data.last_round_recap) {
 				recapText = data.last_round_recap;
 				showingRecap = true;
-				await new Promise((r) => setTimeout(r, 2800));
+				// 动态停留时间：根据文字长度 1.4s - 2.2s
+				const dwellMs = Math.min(2200, Math.max(1400, data.last_round_recap.length * 60));
+				await new Promise((r) => setTimeout(r, dwellMs));
 				showingRecap = false;
-				// 再给一个短暂的过渡
-				await new Promise((r) => setTimeout(r, 180));
+				await new Promise((r) => setTimeout(r, 120));
 			}
 
 			// 如果切入了 profile 板块、且是第 1 轮 → 先显示介绍页

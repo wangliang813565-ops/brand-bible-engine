@@ -3,32 +3,48 @@
 
 const GEMINI_API_BASE = 'https://generativelanguage.googleapis.com/v1beta';
 
-export interface GeminiMessage {
-	role: 'user' | 'model';
-	parts: { text: string }[];
+export type GeminiModel =
+	| 'gemini-2.5-flash-lite' // 最快，用于简单分类/点评
+	| 'gemini-2.5-flash' // 快，用于出题（需要创意）
+	| 'gemini-2.5-pro'; // 慢，用于最终生成品牌圣经
+
+export interface CallOptions {
+	jsonMode?: boolean;
+	maxTokens?: number;
+	temperature?: number;
+	/** 关掉 thinking 能把延迟砍掉一半以上，适合不需要深度推理的任务 */
+	disableThinking?: boolean;
 }
 
 export async function callGemini(
 	apiKey: string,
-	model: 'gemini-2.5-flash' | 'gemini-2.5-pro',
+	model: GeminiModel,
 	systemPrompt: string,
 	userPrompt: string,
-	jsonMode = true
+	opts: CallOptions = {}
 ): Promise<string> {
 	const url = `${GEMINI_API_BASE}/models/${model}:generateContent?key=${apiKey}`;
 
-	const body: any = {
-		system_instruction: { parts: [{ text: systemPrompt }] },
-		contents: [{ role: 'user', parts: [{ text: userPrompt }] }],
-		generationConfig: {
-			temperature: 0.9,
-			maxOutputTokens: model === 'gemini-2.5-pro' ? 16000 : 4000
-		}
+	const generationConfig: any = {
+		temperature: opts.temperature ?? 0.9,
+		maxOutputTokens:
+			opts.maxTokens ?? (model === 'gemini-2.5-pro' ? 16000 : model === 'gemini-2.5-flash' ? 3000 : 1500)
 	};
 
-	if (jsonMode) {
-		body.generationConfig.responseMimeType = 'application/json';
+	if (opts.jsonMode ?? true) {
+		generationConfig.responseMimeType = 'application/json';
 	}
+
+	if (opts.disableThinking) {
+		// 禁用 thinking tokens，让响应走最短路径
+		generationConfig.thinkingConfig = { thinkingBudget: 0 };
+	}
+
+	const body = {
+		system_instruction: { parts: [{ text: systemPrompt }] },
+		contents: [{ role: 'user', parts: [{ text: userPrompt }] }],
+		generationConfig
+	};
 
 	const resp = await fetch(url, {
 		method: 'POST',

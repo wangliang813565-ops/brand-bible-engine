@@ -133,7 +133,13 @@ ${typeHint}
   ]
 }`;
 
-	const text = await callGemini(apiKey, 'gemini-2.5-flash', SYSTEM_PROMPT, userPrompt, true);
+	// 出题要创意但也要快 — flash + 禁 thinking + 降 maxTokens
+	const text = await callGemini(apiKey, 'gemini-2.5-flash', SYSTEM_PROMPT, userPrompt, {
+		jsonMode: true,
+		maxTokens: 2500,
+		temperature: 0.9,
+		disableThinking: true
+	});
 	const parsed = extractJson<{ questions: Question[] }>(text);
 
 	if (!parsed.questions || parsed.questions.length !== QUESTIONS_PER_ROUND) {

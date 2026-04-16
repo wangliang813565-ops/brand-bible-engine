@@ -104,7 +104,13 @@ ${historyText}
   "reason": "一句话说明为什么这样决定"
 }`;
 
-	const text = await callGemini(apiKey, 'gemini-2.5-flash', SYSTEM_PROMPT, userPrompt, true);
+	// 评估是分类任务，用 flash-lite + 禁 thinking
+	const text = await callGemini(apiKey, 'gemini-2.5-flash-lite', SYSTEM_PROMPT, userPrompt, {
+		jsonMode: true,
+		maxTokens: 500,
+		temperature: 0.3,
+		disableThinking: true
+	});
 	const parsed = extractJson<{
 		coverage_score: number;
 		action: string;

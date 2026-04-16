@@ -48,7 +48,13 @@ ${qa}
 输出一句 30-80 字的口头回应（纯文本，不用引号包裹）：`;
 
 	try {
-		const text = await callGemini(apiKey, 'gemini-2.5-flash', SYSTEM_PROMPT, userPrompt, false);
+		// 点评用最快模型 + 禁用 thinking + 纯文本输出
+		const text = await callGemini(apiKey, 'gemini-2.5-flash-lite', SYSTEM_PROMPT, userPrompt, {
+			jsonMode: false,
+			maxTokens: 200,
+			temperature: 0.85,
+			disableThinking: true
+		});
 		// 清理：去掉可能的引号/Markdown
 		return text
 			.replace(/^["'「『]/, '')
