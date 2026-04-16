@@ -242,6 +242,21 @@
 		<div class="bible-content">
 			{@html bibleHtml}
 		</div>
+
+		<!-- 微信加好友卡片 -->
+		<div class="wechat-card">
+			<div class="wechat-header">
+				<span class="wechat-emoji">💬</span>
+				<div>
+					<h3>想进一步聊聊怎么把这份圣经落地？</h3>
+					<p>加我微信，一对一帮你把 AI 团队搭起来</p>
+				</div>
+			</div>
+			<div class="wechat-qr-wrap">
+				<img src="/wechat-qr.png" alt="微信二维码 - 王亮" class="wechat-qr" />
+				<p class="wechat-hint">长按二维码 / 截图用微信扫一扫</p>
+			</div>
+		</div>
 	</div>
 {:else if currentRound?.questions}
 	<!-- 答题页 -->
@@ -792,5 +807,64 @@
 		padding: 2px 6px;
 		border-radius: 3px;
 		font-size: 90%;
+	}
+	.wechat-card {
+		margin-top: 32px;
+		background: linear-gradient(135deg, #0a7d3e 0%, #1dab4e 100%);
+		color: #fff;
+		border-radius: 20px;
+		padding: 32px 28px;
+		box-shadow: 0 8px 32px rgba(10, 125, 62, 0.24);
+		text-align: center;
+	}
+	.wechat-header {
+		display: flex;
+		align-items: center;
+		gap: 16px;
+		margin-bottom: 24px;
+		text-align: left;
+	}
+	.wechat-emoji {
+		font-size: 40px;
+	}
+	.wechat-header h3 {
+		margin: 0 0 4px;
+		font-size: 19px;
+		font-weight: 700;
+		color: #fff;
+	}
+	.wechat-header p {
+		margin: 0;
+		font-size: 14px;
+		color: rgba(255, 255, 255, 0.9);
+	}
+	.wechat-qr-wrap {
+		background: #fff;
+		padding: 20px;
+		border-radius: 16px;
+		display: inline-block;
+	}
+	.wechat-qr {
+		width: 240px;
+		height: 240px;
+		object-fit: contain;
+		display: block;
+		margin: 0 auto 12px;
+	}
+	.wechat-hint {
+		margin: 0;
+		font-size: 13px;
+		color: #555;
+	}
+	@media (max-width: 560px) {
+		.wechat-header {
+			flex-direction: column;
+			text-align: center;
+			gap: 8px;
+		}
+		.wechat-qr {
+			width: 200px;
+			height: 200px;
+		}
 	}
 </style>
