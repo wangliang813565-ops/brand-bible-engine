@@ -37,7 +37,14 @@
 </script>
 
 <div class="hero">
-	<h1>🎯 你的品牌圣经还没写出来</h1>
+	<div class="quote">
+		<p class="quote-text">
+			没有人能快速且完整地介绍清楚<br />
+			<span class="quote-em">自己是谁</span>、<span class="quote-em">自己的生意怎么做</span>、<span class="quote-em">自己的需求是什么</span>。
+		</p>
+	</div>
+
+	<h1>🎯 所以你的品牌圣经还没写出来</h1>
 	<p class="sub">
 		和 AI 聊 15 分钟，答 200+ 道卡片选择题<br />
 		最后给你一份专属品牌圣经（Markdown）
@@ -81,10 +88,54 @@
 <style>
 	.hero {
 		text-align: center;
-		padding: 40px 20px;
+		padding: 32px 20px;
+	}
+	.quote {
+		background: linear-gradient(135deg, #1a1a1a 0%, #2a2a2a 100%);
+		color: #fafafa;
+		padding: 36px 28px;
+		border-radius: 20px;
+		margin-bottom: 36px;
+		box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
+		position: relative;
+		overflow: hidden;
+	}
+	.quote::before {
+		content: '"';
+		position: absolute;
+		top: -20px;
+		left: 20px;
+		font-size: 120px;
+		color: rgba(255, 255, 255, 0.08);
+		font-family: Georgia, serif;
+		font-weight: 700;
+		line-height: 1;
+	}
+	.quote-text {
+		font-size: 20px;
+		font-weight: 500;
+		line-height: 1.8;
+		margin: 0;
+		position: relative;
+		z-index: 1;
+	}
+	.quote-em {
+		color: #f5a623;
+		font-weight: 700;
+		border-bottom: 2px solid #f5a623;
+		padding-bottom: 1px;
+	}
+	@media (max-width: 560px) {
+		.quote {
+			padding: 28px 20px;
+		}
+		.quote-text {
+			font-size: 17px;
+			line-height: 1.7;
+		}
 	}
 	h1 {
-		font-size: 28px;
+		font-size: 24px;
 		font-weight: 700;
 		margin: 0 0 12px;
 		line-height: 1.4;
