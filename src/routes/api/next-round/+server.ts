@@ -10,6 +10,7 @@ import { evaluateCompletion } from '$lib/completion-evaluator';
 import { composeBible } from '$lib/bible-composer';
 import { RESEARCH_GOALS, type GoalId } from '$lib/research-goals';
 import { readCreds, getTenantAccessToken, createBitableRecord } from '$lib/feishu';
+import { generateRecap } from '$lib/recap-generator';
 
 export const POST: RequestHandler = async ({ request, platform }) => {
 	if (!platform?.env?.DB) throw error(500, 'D1 not bound');
@@ -76,14 +77,29 @@ export const POST: RequestHandler = async ({ request, platform }) => {
 	let mode: 'normal' | 'deeper' | 'clarify' = 'normal';
 	let nextGoal: GoalId = session.current_goal as GoalId;
 	let nextRoundIndex = session.current_goal_round + 1;
+	let lastRoundRecap = '';
 
 	if (session.current_goal_round > 0) {
-		const evaluation = await evaluateCompletion(
-			platform.env.GEMINI_API_KEY,
-			session.current_goal as GoalId,
-			session.current_goal_round,
-			answeredHistory
-		);
+		// 上一轮的 4 个答案
+		const lastRoundAnswers = answeredHistory.filter(
+			(a) => a.goal === (session.current_goal as GoalId)
+		).slice(-4);
+
+		// 并行：评估完成度 + 生成点评（两个都要调 Gemini Flash）
+		const [evaluation, recap] = await Promise.all([
+			evaluateCompletion(
+				platform.env.GEMINI_API_KEY,
+				session.current_goal as GoalId,
+				session.current_goal_round,
+				answeredHistory
+			),
+			generateRecap(
+				platform.env.GEMINI_API_KEY,
+				session.current_goal as GoalId,
+				lastRoundAnswers
+			)
+		]);
+		lastRoundRecap = recap;
 
 		// 更新覆盖度
 		const coverage = JSON.parse(session.goal_coverage);
@@ -165,7 +181,8 @@ export const POST: RequestHandler = async ({ request, platform }) => {
 				done: true,
 				bible_markdown: bible,
 				goal_coverage: coverage,
-				feishu_record_id: feishuRecordId
+				feishu_record_id: feishuRecordId,
+				last_round_recap: lastRoundRecap
 			});
 		}
 
@@ -221,6 +238,7 @@ export const POST: RequestHandler = async ({ request, platform }) => {
 		total_questions: session.total_questions + 4,
 		goal_coverage: JSON.parse(session.goal_coverage),
 		mode,
+		last_round_recap: lastRoundRecap,
 		questions: insertedQuestions.map((q) => ({
 			id: q.id,
 			question: q.question,

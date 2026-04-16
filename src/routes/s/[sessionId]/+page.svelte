@@ -26,6 +26,7 @@
 		mode?: 'normal' | 'deeper' | 'clarify';
 		questions?: Question[];
 		bible_markdown?: string;
+		last_round_recap?: string;
 	}
 
 	interface Attachment {
@@ -45,9 +46,18 @@
 	let submitting = $state(false);
 	let errorMsg = $state('');
 
+	// 过场动画 + 点评
+	let transitioning = $state(false);      // 正在从上一轮切到下一轮
+	let showingRecap = $state(false);       // 当前是否在展示 recap
+	let recapText = $state('');             // 点评文本
+
 	// 加载或请求下一轮
-	async function loadNextRound() {
-		loading = true;
+	async function loadNextRound(showTransition = false) {
+		if (showTransition) {
+			transitioning = true;
+		} else {
+			loading = true;
+		}
 		errorMsg = '';
 		try {
 			const resp = await fetch('/api/next-round', {
@@ -57,15 +67,28 @@
 			});
 			const data = (await resp.json()) as RoundData;
 			if (!resp.ok) throw new Error((data as any).error || '加载失败');
-			currentRound = data;
-			currentQuestionIdx = findFirstUnanswered(data.questions || []);
+
 			if (typeof localStorage !== 'undefined') {
 				localStorage.setItem('bbe_session_id', sessionId);
 			}
+
+			// 如果有上一轮的点评 + 处于过场模式 → 展示点评 2.5 秒
+			if (showTransition && data.last_round_recap) {
+				recapText = data.last_round_recap;
+				showingRecap = true;
+				await new Promise((r) => setTimeout(r, 2800));
+				showingRecap = false;
+				// 再给一个短暂的过渡
+				await new Promise((r) => setTimeout(r, 180));
+			}
+
+			currentRound = data;
+			currentQuestionIdx = findFirstUnanswered(data.questions || []);
 		} catch (e: any) {
 			errorMsg = e.message || '网络错误';
 		} finally {
 			loading = false;
+			transitioning = false;
 		}
 	}
 
@@ -110,7 +133,8 @@
 			if (currentQuestionIdx < (currentRound.questions?.length || 0) - 1) {
 				currentQuestionIdx++;
 			} else {
-				await loadNextRound();
+				// 本轮 4 题答完 → 开启过场动画
+				await loadNextRound(true);
 			}
 		} catch (e: any) {
 			errorMsg = e.message || '网络错误';
@@ -231,6 +255,29 @@
 	<div class="center">
 		<div class="spinner"></div>
 		<p>AI 正在准备你的专属问题...</p>
+	</div>
+{:else if transitioning}
+	<!-- 过场：AI 在看答案 / 展示点评 -->
+	<div class="transition">
+		{#if showingRecap && recapText}
+			<div class="recap-card fade-in">
+				<div class="recap-avatar">🤖</div>
+				<div class="recap-body">
+					<div class="recap-label">AI 听完这 4 题的反应</div>
+					<p class="recap-text">{recapText}</p>
+				</div>
+			</div>
+		{:else}
+			<div class="thinking">
+				<div class="dots">
+					<span></span>
+					<span></span>
+					<span></span>
+				</div>
+				<p class="thinking-text">AI 在消化你刚才的回答...</p>
+				<p class="thinking-sub">根据你的答案生成下一轮专属问题中</p>
+			</div>
+		{/if}
 	</div>
 {:else if currentRound?.done}
 	<!-- 品牌圣经完成页 -->
@@ -445,6 +492,110 @@
 	@keyframes spin {
 		to {
 			transform: rotate(360deg);
+		}
+	}
+	/* 过场页 */
+	.transition {
+		min-height: 60vh;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		padding: 40px 20px;
+	}
+	.thinking {
+		text-align: center;
+	}
+	.dots {
+		display: flex;
+		justify-content: center;
+		gap: 8px;
+		margin-bottom: 24px;
+	}
+	.dots span {
+		width: 12px;
+		height: 12px;
+		border-radius: 50%;
+		background: #1a1a1a;
+		animation: pulse 1.2s ease-in-out infinite;
+	}
+	.dots span:nth-child(2) {
+		animation-delay: 0.2s;
+	}
+	.dots span:nth-child(3) {
+		animation-delay: 0.4s;
+	}
+	@keyframes pulse {
+		0%, 60%, 100% {
+			transform: scale(1);
+			opacity: 0.6;
+		}
+		30% {
+			transform: scale(1.3);
+			opacity: 1;
+		}
+	}
+	.thinking-text {
+		margin: 0 0 6px;
+		font-size: 17px;
+		font-weight: 600;
+		color: #1a1a1a;
+	}
+	.thinking-sub {
+		margin: 0;
+		font-size: 13px;
+		color: #999;
+	}
+	.recap-card {
+		background: linear-gradient(135deg, #1a1a1a 0%, #2a2a2a 100%);
+		color: #fff;
+		padding: 28px 24px;
+		border-radius: 18px;
+		max-width: 560px;
+		width: 100%;
+		box-shadow: 0 12px 48px rgba(0, 0, 0, 0.14);
+		display: flex;
+		gap: 16px;
+		align-items: flex-start;
+	}
+	.recap-avatar {
+		flex-shrink: 0;
+		width: 48px;
+		height: 48px;
+		background: rgba(255, 255, 255, 0.1);
+		border-radius: 50%;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		font-size: 24px;
+	}
+	.recap-body {
+		flex: 1;
+	}
+	.recap-label {
+		font-size: 12px;
+		color: #f5a623;
+		font-weight: 700;
+		text-transform: uppercase;
+		letter-spacing: 0.5px;
+		margin-bottom: 8px;
+	}
+	.recap-text {
+		margin: 0;
+		font-size: 17px;
+		line-height: 1.7;
+		color: #fff;
+	}
+	.fade-in {
+		animation: fadeInUp 0.45s cubic-bezier(0.2, 0.8, 0.2, 1);
+	}
+	@keyframes fadeInUp {
+		from {
+			opacity: 0;
+			transform: translateY(16px);
+		}
+		to {
+			opacity: 1;
+			transform: translateY(0);
 		}
 	}
 	.progress-bar {
